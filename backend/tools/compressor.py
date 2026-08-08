@@ -1,49 +1,123 @@
 from PIL import Image
 import os
+import re
 
 
-def compress_image(input_path, target_size_kb=500):
+OUTPUT_FOLDER = "storage/outputs"
+
+os.makedirs(
+    OUTPUT_FOLDER,
+    exist_ok=True
+)
+
+
+def compress_image(
+    input_path,
+    target_size_kb=500
+):
 
     image = Image.open(input_path)
 
-    filename = os.path.splitext(os.path.basename(input_path))[0]
-    extension = os.path.splitext(input_path)[1].lower()
+    filename = os.path.splitext(
+        os.path.basename(input_path)
+    )[0]
+
+    extension = os.path.splitext(
+        input_path
+    )[1].lower()
+
+    # ---------------------------------------------------------
+    # REMOVE INTERNAL UPLOAD UUID
+    # ---------------------------------------------------------
+
+    filename = re.sub(
+        r"_[a-fA-F0-9]{8}$",
+        "",
+        filename
+    )
+
+    # ---------------------------------------------------------
+    # CLEAN FILENAME
+    # ---------------------------------------------------------
+
+    filename = re.sub(
+        r"[^a-zA-Z0-9_-]+",
+        "_",
+        filename
+    )
+
+    filename = filename.strip("_")
+
+    if not filename:
+        filename = "image"
+
+    # ---------------------------------------------------------
+    # OUTPUT PATH
+    # ---------------------------------------------------------
 
     output_path = os.path.join(
-        "storage",
-        "outputs",
+        OUTPUT_FOLDER,
         f"{filename}_compressed{extension}"
     )
 
-    # PNG doesn't use JPEG quality compression
+    # ---------------------------------------------------------
+    # PNG
+    # ---------------------------------------------------------
+
     if extension == ".png":
+
         image.save(
             output_path,
             optimize=True,
             compress_level=9
         )
+
+        image.close()
+
         return output_path
 
-    # Convert RGBA → RGB for JPEG
-    if extension in [".jpg", ".jpeg"] and image.mode != "RGB":
-        image = image.convert("RGB")
+    # ---------------------------------------------------------
+    # JPEG
+    # ---------------------------------------------------------
 
-    quality = 95
-    min_quality = 10
+    if extension in [".jpg", ".jpeg"]:
 
-    while quality >= min_quality:
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-        image.save(
-            output_path,
-            optimize=True,
-            quality=quality
-        )
+        quality = 95
+        min_quality = 10
 
-        size_kb = os.path.getsize(output_path) / 1024
+        while quality >= min_quality:
 
-        if size_kb <= target_size_kb:
-            break
+            image.save(
+                output_path,
+                optimize=True,
+                quality=quality
+            )
 
-        quality -= 5
+            size_kb = (
+                os.path.getsize(output_path) / 1024
+            )
+
+            if size_kb <= target_size_kb:
+                break
+
+            quality -= 5
+
+        image.close()
+
+        return output_path
+
+    # ---------------------------------------------------------
+    # OTHER FORMATS
+    # ---------------------------------------------------------
+
+    image.save(
+        output_path,
+        optimize=True
+    )
+
+    image.close()
 
     return output_path

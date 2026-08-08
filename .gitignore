@@ -4,5 +4,6 @@ __pycache__/
 backend/storage/uploads/*
 backend/storage/outputs/*
 backend/storage/temp/*
+frontend/node_modules/
 .vscode/
 .history/
